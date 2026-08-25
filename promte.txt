@@ -1,9 +1,0 @@
-what i want you to do is to complete my code so that:
-1. the flask server sends one pdf at a time to the html (NOTE: my current code auto downloads the pdf which I DO NOT WANT TO HAPPEN, fix it)
-2. then the html previews the pdf file on the screen.
-3. the html webpage should display the pdf and make it scrollable, with an input field below it, the user would read the pdf file and write the person's name in the pdf into that input field
-4. the user presses submit when finished writing the name 
-5. the html webpage now sends a request to the flask server that has the current filename of the pdf and the name that the user wrote in the input field
-6. the flask server renames the pdf file to the name that the user wrote
-7. the user should be able to navigate all of his pdfs and change the name
-8. when the user submits the name, it automatlicly skips to the next pdf
