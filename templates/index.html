@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF Renamer</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap');
+        
+        :root {
+            --bg-color: #0f172a;
+            --panel-bg: #1e293b;
+            --text-color: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #3b82f6;
+            --accent-hover: #2563eb;
+            --success: #10b981;
+            --border: #334155;
+            --radius: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            height: 100%;
+        }
+
+        .main-content {
+            flex: 1;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            max-width: 1200px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        .pdf-viewer-container {
+            flex: 1;
+            background-color: var(--panel-bg);
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            overflow: hidden;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .pdf-viewer-header {
+            padding: 12px 16px;
+            background-color: rgba(30, 41, 59, 0.8);
+            border-bottom: 1px solid var(--border);
+            backdrop-filter: blur(8px);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .file-info {
+            font-size: 0.9rem;
+            color: var(--text-muted);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            direction: rtl; /* For Arabic filenames mostly */
+            text-align: left;
+        }
+
+        .file-counter {
+            font-size: 0.85rem;
+            background-color: var(--border);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-weight: 500;
+        }
+
+        iframe {
+            width: 100%;
+            height: 100%;
+            border: none;
+            background-color: #334155; /* Neutral background while loading */
+        }
+
+        .controls-panel {
+            background-color: var(--panel-bg);
+            padding: 20px;
+            border-radius: var(--radius);
+            border: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        label {
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+
+        input[type="text"] {
+            background-color: #0f172a;
+            border: 1px solid var(--border);
+            color: var(--text-color);
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 1.1rem;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        input[type="text"]:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
+        }
+
+        .button-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+        }
+        
+        .nav-buttons {
+            display: flex;
+            gap: 12px;
+            margin-right: auto;
+        }
+
+        button {
+            background-color: var(--panel-bg);
+            color: var(--text-color);
+            border: 1px solid var(--border);
+            padding: 10px 16px;
+            border-radius: 8px;
+            font-size: 0.95rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        button:hover:not(:disabled) {
+            background-color: var(--border);
+        }
+
+        button.primary {
+            background-color: var(--accent);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        button.primary:hover:not(:disabled) {
+            background-color: var(--accent-hover);
+        }
+
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background-color: var(--panel-bg);
+            border: 1px solid var(--border);
+            padding: 12px 20px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+            transform: translateY(150%);
+            transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            z-index: 50;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+        }
+        
+        .toast.success {
+            border-left: 4px solid var(--success);
+        }
+        
+        .toast.error {
+            border-left: 4px solid #ef4444;
+        }
+
+        .loading-overlay {
+            position: absolute;
+            inset: 0;
+            background-color: rgba(15, 23, 42, 0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.2s ease;
+        }
+
+        .loading-overlay.active {
+            opacity: 1;
+            pointer-events: all;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--accent);
+            animation: spin 1s ease-in-out infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+        
+        .empty-state {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100%;
+            text-align: center;
+            gap: 16px;
+            color: var(--text-muted);
+        }
+        
+        .empty-state h2 {
+            color: var(--text-color);
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="main-content">
+            
+            <div class="pdf-viewer-container">
+                <div class="pdf-viewer-header">
+                    <div class="file-info" id="file-info-text">Loading PDFs...</div>
+                    <div class="file-counter" id="file-counter-text">0 / 0</div>
+                </div>
+                
+                <div style="position: relative; flex: 1; display: flex; flex-direction: column;">
+                    <div class="loading-overlay" id="loading-overlay">
+                        <div class="spinner"></div>
+                    </div>
+                    <iframe id="pdf-frame" src=""></iframe>
+                    <div class="empty-state" id="empty-state">
+                        <h2>All Done!</h2>
+                        <p>No more PDFs found in the folder.</p>
+                        <button onclick="fetchPdfs()">Refresh List</button>
+                    </div>
+                </div>
+            </div>
+
+            <div class="controls-panel">
+                <form id="rename-form" onsubmit="handleRename(event)">
+                    <div class="form-group">
+                        <label for="new-name">Extract Person's Name</label>
+                        <input type="text" id="new-name" placeholder="Enter name here..." autocomplete="off" required>
+                    </div>
+                    <div class="button-group">
+                        <div class="nav-buttons">
+                            <button type="button" id="prev-btn" onclick="navigate(-1)" disabled>
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 18-6-6 6-6"/></svg>
+                                Previous
+                            </button>
+                            <button type="button" id="next-btn" onclick="navigate(1)" disabled>
+                                Next
+                                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m9 18 6-6-6-6"/></svg>
+                            </button>
+                        </div>
+                        <button type="submit" id="submit-btn" class="primary" disabled>
+                            Save & Next
+                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L20 7"/></svg>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="toast" id="toast">
+        <span id="toast-msg">Success!</span>
+    </div>
+
+    <script>
+        let pdfList = [];
+        let currentIndex = -1;
+
+        const elements = {
+            frame: document.getElementById('pdf-frame'),
+            infoText: document.getElementById('file-info-text'),
+            counterText: document.getElementById('file-counter-text'),
+            nameInput: document.getElementById('new-name'),
+            prevBtn: document.getElementById('prev-btn'),
+            nextBtn: document.getElementById('next-btn'),
+            submitBtn: document.getElementById('submit-btn'),
+            loadingOverlay: document.getElementById('loading-overlay'),
+            emptyState: document.getElementById('empty-state'),
+            toast: document.getElementById('toast'),
+            toastMsg: document.getElementById('toast-msg')
+        };
+
+        async function fetchPdfs() {
+            setLoading(true);
+            try {
+                const response = await fetch('/api/pdfs');
+                const data = await response.json();
+                pdfList = data.pdfs || [];
+                
+                if (pdfList.length > 0) {
+                    currentIndex = 0;
+                    loadCurrentPdf();
+                    elements.emptyState.style.display = 'none';
+                    elements.frame.style.display = 'block';
+                } else {
+                    currentIndex = -1;
+                    updateUIForEmpty();
+                }
+            } catch (error) {
+                showToast('Error fetching PDFs', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        let currentBlobUrl = null;
+
+        async function loadCurrentPdf() {
+            if (currentIndex < 0 || currentIndex >= pdfList.length) {
+                updateUIForEmpty();
+                return;
+            }
+
+            const currentPath = pdfList[currentIndex];
+            elements.infoText.textContent = currentPath;
+            elements.counterText.textContent = `${currentIndex + 1} / ${pdfList.length}`;
+            
+            elements.nameInput.value = '';
+            
+            elements.prevBtn.disabled = currentIndex === 0;
+            elements.nextBtn.disabled = currentIndex === pdfList.length - 1;
+            elements.submitBtn.disabled = false;
+            elements.nameInput.disabled = false;
+            
+            // Encode path to base64 to hide .pdf extension from IDM
+            const b64Path = btoa(unescape(encodeURIComponent(currentPath)));
+            
+            // Fetch PDF as blob to prevent IDM from intercepting it
+            setLoading(true);
+            try {
+                const response = await fetch(`/view-pdf?id=${b64Path}`);
+                console.log(response)
+                if (!response.ok) throw new Error('Failed to load PDF');
+                
+                const rawBlob = await response.blob();
+                const pdfBlob = new Blob([rawBlob], { type: 'application/pdf' });
+                
+                // Cleanup previous blob URL to prevent memory leaks
+                if (currentBlobUrl) {
+                    URL.revokeObjectURL(currentBlobUrl);
+                }
+                
+                currentBlobUrl = URL.createObjectURL(pdfBlob);
+                elements.frame.src = currentBlobUrl;
+                
+                setTimeout(() => elements.nameInput.focus(), 100);
+            } catch (error) {
+                console.log(error)
+                    showToast('Failed to load PDF preview', 'error');
+                elements.frame.src = '';
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function updateUIForEmpty() {
+            elements.frame.style.display = 'none';
+            elements.emptyState.style.display = 'flex';
+            elements.infoText.textContent = 'No PDFs found';
+            elements.counterText.textContent = '0 / 0';
+            elements.nameInput.value = '';
+            elements.nameInput.disabled = true;
+            elements.submitBtn.disabled = true;
+            elements.prevBtn.disabled = true;
+            elements.nextBtn.disabled = true;
+        }
+
+        function navigate(direction) {
+            const newIndex = currentIndex + direction;
+            if (newIndex >= 0 && newIndex < pdfList.length) {
+                currentIndex = newIndex;
+                loadCurrentPdf();
+            }
+        }
+
+        async function handleRename(e) {
+            e.preventDefault();
+            const newName = elements.nameInput.value.trim();
+            if (!newName || currentIndex < 0) return;
+
+            const oldPath = pdfList[currentIndex];
+            
+            setLoading(true);
+            try {
+                const response = await fetch('/api/rename', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ old_path: oldPath, new_name: newName })
+                });
+
+                const data = await response.json();
+                
+                if (response.ok) {
+                    showToast('Renamed successfully!', 'success');
+                    
+                    // Update array with new path so navigation doesn't break
+                    pdfList[currentIndex] = data.new_path;
+                    
+                    setTimeout(() => {
+                        if (currentIndex < pdfList.length - 1) {
+                            navigate(1);
+                        } else {
+                            fetchPdfs();
+                        }
+                    }, 400);
+                } else {
+                    showToast(data.error || 'Error renaming file', 'error');
+                }
+            } catch (error) {
+                showToast('Network error', 'error');
+            } finally {
+                setLoading(false);
+            }
+        }
+
+        function setLoading(isActive) {
+            if (isActive) {
+                elements.loadingOverlay.classList.add('active');
+            } else {
+                elements.loadingOverlay.classList.remove('active');
+            }
+        }
+
+        function showToast(message, type = 'success') {
+            elements.toastMsg.textContent = message;
+            elements.toast.className = `toast ${type} show`;
+            
+            setTimeout(() => {
+                elements.toast.classList.remove('show');
+            }, 3000);
+        }
+
+        document.addEventListener('DOMContentLoaded', fetchPdfs);
+    </script>
+</body>
+</html>
