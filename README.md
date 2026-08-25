@@ -1,5 +1,8 @@
 # rename_pdfs_easily
 
+Renaming a lot of pdf files is takes a long time? <br/>
+you can use this vibe-coded tool to rename them quickly and easily!
+
 ## How to use?
 Clone the repo:
 ```
